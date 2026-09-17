@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Cake, DollarSign, Save, Check, Calendar, RotateCcw } from 'lucide-react';
 import { UserStats } from '../types';
@@ -9,9 +9,9 @@ interface AdminStatsManagerProps {
 }
 
 export default function AdminStatsManager({ stats, onUpdateStats }: AdminStatsManagerProps) {
-  const [daysLeft, setDaysLeft] = useState<number>(stats.birthdayDaysLeft);
-  const [savings, setSavings] = useState<number>(stats.savingsDollars);
-  const [birthdayDate, setBirthdayDate] = useState<string>(stats.birthdayDate || '');
+  const [daysLeft, setDaysLeft] = useState<number>(stats?.birthdayDaysLeft ?? 100);
+  const [savings, setSavings] = useState<number>(stats?.savingsDollars ?? 10);
+  const [birthdayDate, setBirthdayDate] = useState<string>(stats?.birthdayDate || '');
   const [isSaved, setIsSaved] = useState(false);
 
   // Calculate days remaining given a birthday date
@@ -116,8 +116,11 @@ export default function AdminStatsManager({ stats, onUpdateStats }: AdminStatsMa
                   type="number"
                   min="0"
                   max="366"
-                  value={daysLeft}
-                  onChange={e => setDaysLeft(parseInt(e.target.value, 10))}
+                  value={isNaN(daysLeft) ? '' : daysLeft}
+                  onChange={e => {
+                    const val = parseInt(e.target.value, 10);
+                    setDaysLeft(isNaN(val) ? 0 : val);
+                  }}
                   className="w-full text-sm font-bold p-2 pr-12 rounded-lg border border-sky-200 bg-white text-slate-900 focus:outline-none focus:border-sky-500 font-mono"
                   placeholder="Ej: 100"
                 />
@@ -163,8 +166,11 @@ export default function AdminStatsManager({ stats, onUpdateStats }: AdminStatsMa
                   type="number"
                   min="0"
                   step="0.5"
-                  value={savings}
-                  onChange={e => setSavings(parseFloat(e.target.value))}
+                  value={isNaN(savings) ? '' : savings}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setSavings(isNaN(val) ? 0 : val);
+                  }}
                   className="w-full text-sm font-bold p-2 pl-7 pr-16 rounded-lg border border-sky-200 bg-white text-slate-900 focus:outline-none focus:border-sky-500 font-mono"
                   placeholder="Ej: 10"
                 />

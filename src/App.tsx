@@ -11,7 +11,8 @@ import {
   UserCheck
 } from 'lucide-react';
 import { DAILY_GAMES_LIST, getDailyGameByDay, calculateScheduledDay } from './data/gamesConfig';
-import { TelemetryLog } from './types';
+import { TelemetryLog, UserStats } from './types';
+import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import UserView from './components/UserView';
 import TelemetryDrawer from './components/TelemetryDrawer';
@@ -26,6 +27,20 @@ export default function App() {
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
   const [isUIModalOpen, setIsUIModalOpen] = useState(false);
   const [lastDispatchedBanner, setLastDispatchedBanner] = useState<string | null>(null);
+  const [stats, setStats] = useState<UserStats>(() => {
+    try {
+      const saved = localStorage.getItem('user_stats');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (err) {
+      console.error('Failed to parse user stats:', err);
+    }
+    return {
+      birthdayDaysLeft: 100,
+      savingsDollars: 10
+    };
+  });
 
   useEffect(() => {
     // 1. Calculate calendar-scheduled day
@@ -69,11 +84,102 @@ export default function App() {
       setMode('admin');
     }
 
-    // 4. Load historical logs from localStorage
-    loadLogs();
+    // 4. Load initial stats and telemetry logs from Supabase & localStorage
+    fetchSupabaseData();
+
+    // 5. Subscribe to real-time changes on user_stats and telemetry_logs
+    const statsChannel = supabase
+      .channel('public:user_stats')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_stats' }, (payload) => {
+        if (payload.new && typeof payload.new === 'object') {
+          const newData = payload.new as Record<string, any>;
+          const newStats: UserStats = {
+            birthdayDaysLeft: newData.birthday_days_left ?? 100,
+            savingsDollars: Number(newData.savings_dollars ?? 10),
+            birthdayDate: newData.birthday_date || undefined
+          };
+          setStats(newStats);
+          localStorage.setItem('user_stats', JSON.stringify(newStats));
+        }
+      })
+      .subscribe();
+
+    const logsChannel = supabase
+      .channel('public:telemetry_logs')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'telemetry_logs' }, (payload) => {
+        if (payload.new && typeof payload.new === 'object') {
+          const newData = payload.new as Record<string, any>;
+          const inserted: TelemetryLog = {
+            id: newData.id,
+            gameId: newData.game_id,
+            gameTitle: newData.game_title,
+            action: newData.action,
+            payload: newData.payload,
+            timestamp: newData.timestamp,
+            metadata: newData.metadata
+          };
+          setLogs((prev) => {
+            if (prev.some((l) => l.id === inserted.id)) return prev;
+            const updated = [inserted, ...prev];
+            localStorage.setItem('app_metrics', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'telemetry_logs' }, () => {
+        setLogs([]);
+        localStorage.removeItem('app_metrics');
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(statsChannel);
+      supabase.removeChannel(logsChannel);
+    };
   }, []);
 
-  const loadLogs = () => {
+  const fetchSupabaseData = async () => {
+    // Fetch stats
+    try {
+      const { data, error } = await supabase.from('user_stats').select('*').eq('id', 'default_user').single();
+      if (!error && data) {
+        const fetchedStats: UserStats = {
+          birthdayDaysLeft: data.birthday_days_left ?? 100,
+          savingsDollars: Number(data.savings_dollars ?? 10),
+          birthdayDate: data.birthday_date || undefined
+        };
+        setStats(fetchedStats);
+        localStorage.setItem('user_stats', JSON.stringify(fetchedStats));
+      }
+    } catch (err) {
+      console.warn('Supabase fetch user_stats failed, using local state:', err);
+    }
+
+    // Fetch telemetry logs
+    try {
+      const { data, error } = await supabase.from('telemetry_logs').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        const fetchedLogs: TelemetryLog[] = data.map((item) => ({
+          id: item.id,
+          gameId: item.game_id,
+          gameTitle: item.game_title,
+          action: item.action,
+          payload: item.payload,
+          timestamp: item.timestamp,
+          metadata: item.metadata
+        }));
+        setLogs(fetchedLogs);
+        localStorage.setItem('app_metrics', JSON.stringify(fetchedLogs));
+      } else {
+        loadLocalLogs();
+      }
+    } catch (err) {
+      console.warn('Supabase fetch telemetry_logs failed, using local state:', err);
+      loadLocalLogs();
+    }
+  };
+
+  const loadLocalLogs = () => {
     try {
       const saved = localStorage.getItem('app_metrics');
       if (saved) {
@@ -116,7 +222,7 @@ export default function App() {
     }
   };
 
-  const handleLogCapture = (action: string, payload: any, metadata?: any) => {
+  const handleLogCapture = async (action: string, payload: any, metadata?: any) => {
     const activeConfig = getDailyGameByDay(selectedDay);
     const newLog: TelemetryLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -137,11 +243,55 @@ export default function App() {
     }
 
     setLastDispatchedBanner(`Registrado: "${action}" para ${activeConfig.title}`);
+
+    // Persist to Supabase
+    try {
+      await supabase.from('telemetry_logs').insert([
+        {
+          id: newLog.id,
+          game_id: newLog.gameId,
+          game_title: newLog.gameTitle,
+          action: newLog.action,
+          payload: newLog.payload,
+          timestamp: newLog.timestamp,
+          metadata: newLog.metadata || {}
+        }
+      ]);
+    } catch (err) {
+      console.warn('Could not sync log to Supabase:', err);
+    }
   };
 
-  const handleClearLogs = () => {
+  const handleClearLogs = async () => {
     localStorage.removeItem('app_metrics');
     setLogs([]);
+    try {
+      await supabase.from('telemetry_logs').delete().neq('id', '');
+    } catch (err) {
+      console.warn('Could not clear logs in Supabase:', err);
+    }
+  };
+
+  const handleUpdateStats = async (newStats: UserStats) => {
+    setStats(newStats);
+    try {
+      localStorage.setItem('user_stats', JSON.stringify(newStats));
+    } catch (err) {
+      console.error('Failed to save user stats:', err);
+    }
+
+    // Persist to Supabase
+    try {
+      await supabase.from('user_stats').upsert({
+        id: 'default_user',
+        birthday_days_left: newStats.birthdayDaysLeft,
+        savings_dollars: newStats.savingsDollars,
+        birthday_date: newStats.birthdayDate || null,
+        updated_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Could not sync stats to Supabase:', err);
+    }
   };
 
   const activeConfig = getDailyGameByDay(selectedDay);
@@ -228,7 +378,7 @@ export default function App() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
             </span>
             <span className="text-[11px] font-bold text-slate-900 tracking-tight">
-              ACTIVIDAD INTERACTIVA // DÍA {selectedDay}
+              ACTIVIDAD INTERACTIVA // EVENTO {selectedDay}
             </span>
           </div>
           <span className="text-[10px] font-semibold text-sky-800 bg-sky-100/90 px-2 py-0.5 rounded border border-sky-200 uppercase">
@@ -273,6 +423,8 @@ export default function App() {
             onClearLogs={handleClearLogs}
             onSwitchToUserMode={(day, locked) => handleSwitchMode('play', day, locked)}
             onLogCapture={handleLogCapture}
+            stats={stats}
+            onUpdateStats={handleUpdateStats}
           />
         ) : (
           <UserView
@@ -281,13 +433,14 @@ export default function App() {
             onLogCapture={handleLogCapture}
             onSwitchToAdmin={() => handleSwitchMode('admin')}
             isGuestLocked={isGuestLocked}
+            stats={stats}
           />
         )}
       </main>
 
       {/* Footer */}
       <footer className="w-full max-w-xl mx-auto pt-6 text-center text-xs font-mono text-slate-400 space-y-1">
-        <div>Engineered for effortless, zero-screen-fatigue communication.</div>
+        <div>Una app pensada para conocernos de manera descomplicada</div>
         {!isGuestLocked && (
           <div className="text-[10px] text-slate-500">
             Modo actual: <span className="text-slate-800 font-semibold">{mode === 'admin' ? 'Administrador (Editor y Enlaces)' : 'Usuario (Solo interacción y lectura)'}</span>

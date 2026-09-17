@@ -244,7 +244,7 @@ export default function AdminDashboard({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] font-mono font-bold text-sky-700 uppercase">
-                            Día {game.dayNumber}
+                            Evento {game.dayNumber}
                           </span>
                           <span className="text-[10px] font-mono px-2 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">
                             {game.badge}
@@ -403,7 +403,7 @@ export default function AdminDashboard({
               </div>
               <div>
                 <div className="font-bold text-slate-900 font-mono">
-                  Día {activeConfig.dayNumber}: {activeConfig.title}
+                  Evento {activeConfig.dayNumber}: {activeConfig.title}
                 </div>
                 <div className="text-[11px] text-slate-500">
                   Toca "Personalizar" en el panel inferior para cambiar textos, opciones, preguntas o premios.
