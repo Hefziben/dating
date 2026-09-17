@@ -2,9 +2,24 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ================================================
--- 1. USER STATS TABLE
--- Stores countdown days, savings account balance, and birthday date
+-- 1. USER PROFILES TABLE
+-- Stores profile data including username, birthday countdown, bank account info, savings, and transactions
 -- ================================================
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    birthday_days_left INT NOT NULL DEFAULT 100,
+    savings_dollars NUMERIC(12, 2) NOT NULL DEFAULT 10.00,
+    birthday_date DATE,
+    bank_name TEXT DEFAULT 'Banco Principal',
+    account_number TEXT DEFAULT '**** **** 1234',
+    bank_notes TEXT DEFAULT 'Cuenta de Ahorros Personal',
+    transactions JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Backwards compatibility: user_stats table as view or table
 CREATE TABLE IF NOT EXISTS public.user_stats (
     id TEXT PRIMARY KEY DEFAULT 'default_user',
     birthday_days_left INT NOT NULL DEFAULT 100,
@@ -12,6 +27,22 @@ CREATE TABLE IF NOT EXISTS public.user_stats (
     birthday_date DATE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Row Level Security (RLS) policies for user_profiles
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access to user_profiles"
+    ON public.user_profiles FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow public insert and update to user_profiles"
+    ON public.user_profiles FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to user_profiles"
+    ON public.user_profiles FOR DELETE
+    USING (true);
 
 -- Row Level Security (RLS) policies for user_stats
 ALTER TABLE public.user_stats ENABLE ROW LEVEL SECURITY;
@@ -37,6 +68,7 @@ CREATE TABLE IF NOT EXISTS public.telemetry_logs (
     action TEXT NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     timestamp TEXT NOT NULL,
+    username TEXT DEFAULT 'Carolina',
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -81,11 +113,28 @@ CREATE POLICY "Allow public insert and update access to game_configs"
 
 
 -- ================================================
--- 4. REALTIME REPLICATION SETUP
+-- 4. INITIAL DATA MIGRATION FOR CAROLINA
+-- Migrate default user data into Carolina profile if not existing
+-- ================================================
+INSERT INTO public.user_profiles (id, username, birthday_days_left, savings_dollars, bank_name, account_number, bank_notes, transactions)
+VALUES (
+    'profile_carolina',
+    'Carolina',
+    100,
+    10.00,
+    'Banco Principal',
+    '**** **** 4821',
+    'Cuenta Ahorro Cumpleaños Carolina',
+    '[{"id":"tx_init","type":"deposit","amount":10,"description":"Saldo Inicial Migrado","date":"2025-01-01"}]'::jsonb
+)
+ON CONFLICT (username) DO NOTHING;
+
+
+-- ================================================
+-- 5. REALTIME REPLICATION SETUP
 -- Enables Supabase Realtime broadcast and changes for all tables
 -- ================================================
 BEGIN;
-  -- Drop publication if exists or add tables to supabase_realtime publication
   DO $$
   BEGIN
     IF NOT EXISTS (
@@ -93,18 +142,19 @@ BEGIN;
     ) THEN
       CREATE PUBLICATION supabase_realtime FOR ALL TABLES;
     ELSE
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.user_profiles;
       ALTER PUBLICATION supabase_realtime ADD TABLE public.user_stats;
       ALTER PUBLICATION supabase_realtime ADD TABLE public.telemetry_logs;
       ALTER PUBLICATION supabase_realtime ADD TABLE public.game_configs;
     END IF;
   EXCEPTION
     WHEN OTHERS THEN
-      -- Table might already be in publication
       NULL;
   END $$;
 COMMIT;
 
 -- Set replica identity to FULL for realtime change tracking
+ALTER TABLE public.user_profiles REPLICA IDENTITY FULL;
 ALTER TABLE public.user_stats REPLICA IDENTITY FULL;
 ALTER TABLE public.telemetry_logs REPLICA IDENTITY FULL;
 ALTER TABLE public.game_configs REPLICA IDENTITY FULL;

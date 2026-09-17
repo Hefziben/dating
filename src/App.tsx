@@ -4,19 +4,38 @@ import {
   Activity,
   CheckCircle2,
   Image as ImageIcon,
-  ShieldAlert,
-  Sparkles,
-  Eye,
   Wrench,
-  UserCheck
+  Eye,
+  AlertCircle,
+  HelpCircle,
+  UserX
 } from 'lucide-react';
 import { DAILY_GAMES_LIST, getDailyGameByDay, calculateScheduledDay } from './data/gamesConfig';
-import { TelemetryLog, UserStats } from './types';
+import { TelemetryLog, UserProfile, BankTransaction } from './types';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import UserView from './components/UserView';
 import TelemetryDrawer from './components/TelemetryDrawer';
 import UIExampleModal from './components/UIExampleModal';
+
+const DEFAULT_CAROLINA_PROFILE: UserProfile = {
+  id: 'profile_carolina',
+  username: 'Carolina',
+  birthdayDaysLeft: 100,
+  savingsDollars: 10,
+  bankName: 'Banco Principal',
+  accountNumber: '**** **** 4821',
+  bankNotes: 'Cuenta de Ahorros Cumpleaños',
+  transactions: [
+    {
+      id: 'tx_init',
+      type: 'deposit',
+      amount: 10,
+      description: 'Saldo Inicial Migrado',
+      date: '01/01/2025'
+    }
+  ]
+};
 
 export default function App() {
   const [scheduledDay, setScheduledDay] = useState(1);
@@ -27,27 +46,46 @@ export default function App() {
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
   const [isUIModalOpen, setIsUIModalOpen] = useState(false);
   const [lastDispatchedBanner, setLastDispatchedBanner] = useState<string | null>(null);
-  const [stats, setStats] = useState<UserStats>(() => {
+
+  // Multi-profile state
+  const [profiles, setProfiles] = useState<UserProfile[]>(() => {
     try {
-      const saved = localStorage.getItem('user_stats');
-      if (saved) {
-        return JSON.parse(saved);
+      const savedProfiles = localStorage.getItem('app_user_profiles');
+      if (savedProfiles) {
+        const parsed = JSON.parse(savedProfiles);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Migrate legacy single user_stats to Carolina profile if exists
+      const legacyStats = localStorage.getItem('user_stats');
+      if (legacyStats) {
+        const parsedStats = JSON.parse(legacyStats);
+        return [
+          {
+            ...DEFAULT_CAROLINA_PROFILE,
+            birthdayDaysLeft: parsedStats.birthdayDaysLeft ?? 100,
+            savingsDollars: Number(parsedStats.savingsDollars ?? 10),
+            birthdayDate: parsedStats.birthdayDate || undefined
+          }
+        ];
       }
     } catch (err) {
-      console.error('Failed to parse user stats:', err);
+      console.error('Failed to parse user profiles:', err);
     }
-    return {
-      birthdayDaysLeft: 100,
-      savingsDollars: 10
-    };
+    return [DEFAULT_CAROLINA_PROFILE];
   });
+
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => profiles[0]?.id || 'profile_carolina');
+  const [urlUsername, setUrlUsername] = useState<string | null>(null);
+  const [is404NotFound, setIs404NotFound] = useState(false);
 
   useEffect(() => {
     // 1. Calculate calendar-scheduled day
     const autoDay = calculateScheduledDay();
     setScheduledDay(autoDay);
 
-    // 2. Check for URL parameters (?day=2&mode=play&guest=true)
+    // 2. Parse URL parameters (?user=Carolina&day=2&mode=play&guest=true)
     const urlParams = new URLSearchParams(window.location.search);
     const dayParam = urlParams.get('day');
     const modeParam = urlParams.get('mode');
@@ -55,6 +93,9 @@ export default function App() {
     const lockParam = urlParams.get('lock');
     const userOnlyParam = urlParams.get('userOnly');
     const viewParam = urlParams.get('view');
+    const userParam = urlParams.get('user') || urlParams.get('username') || urlParams.get('profile');
+
+    setUrlUsername(userParam);
 
     const guestLocked =
       guestParam === 'true' ||
@@ -74,32 +115,46 @@ export default function App() {
     }
     setSelectedDay(activeDay);
 
-    // 3. Determine view mode: If locked by guest parameter, STRICTLY force user view ('play')
-    if (guestLocked) {
-      setMode('play');
-    } else if (modeParam === 'play' || modeParam === 'user') {
+    // View Mode Determination
+    if (guestLocked || modeParam === 'play' || modeParam === 'user') {
       setMode('play');
     } else {
-      // Default to admin so creator can view links & customize immediately
       setMode('admin');
     }
 
-    // 4. Load initial stats and telemetry logs from Supabase & localStorage
+    // 3. Load data from Supabase and LocalStorage
     fetchSupabaseData();
 
-    // 5. Subscribe to real-time changes on user_stats and telemetry_logs
-    const statsChannel = supabase
-      .channel('public:user_stats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_stats' }, (payload) => {
+    // 4. Subscribe to real-time changes on user_profiles and telemetry_logs
+    const profilesChannel = supabase
+      .channel('public:user_profiles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, (payload) => {
         if (payload.new && typeof payload.new === 'object') {
           const newData = payload.new as Record<string, any>;
-          const newStats: UserStats = {
+          const updatedProfile: UserProfile = {
+            id: newData.id,
+            username: newData.username,
             birthdayDaysLeft: newData.birthday_days_left ?? 100,
             savingsDollars: Number(newData.savings_dollars ?? 10),
-            birthdayDate: newData.birthday_date || undefined
+            birthdayDate: newData.birthday_date || undefined,
+            bankName: newData.bank_name || 'Banco Principal',
+            accountNumber: newData.account_number || '**** **** 1234',
+            bankNotes: newData.bank_notes || '',
+            transactions: Array.isArray(newData.transactions) ? newData.transactions : []
           };
-          setStats(newStats);
-          localStorage.setItem('user_stats', JSON.stringify(newStats));
+
+          setProfiles((prev) => {
+            const index = prev.findIndex((p) => p.id === updatedProfile.id || p.username.toLowerCase() === updatedProfile.username.toLowerCase());
+            let newArr: UserProfile[];
+            if (index >= 0) {
+              newArr = [...prev];
+              newArr[index] = updatedProfile;
+            } else {
+              newArr = [...prev, updatedProfile];
+            }
+            localStorage.setItem('app_user_profiles', JSON.stringify(newArr));
+            return newArr;
+          });
         }
       })
       .subscribe();
@@ -116,6 +171,7 @@ export default function App() {
             action: newData.action,
             payload: newData.payload,
             timestamp: newData.timestamp,
+            username: newData.username || 'Carolina',
             metadata: newData.metadata
           };
           setLogs((prev) => {
@@ -133,26 +189,56 @@ export default function App() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(statsChannel);
+      supabase.removeChannel(profilesChannel);
       supabase.removeChannel(logsChannel);
     };
   }, []);
 
+  // 5. Validate User Parameter for User/Guest View (404 Routing)
+  useEffect(() => {
+    if (mode === 'play' || isGuestLocked) {
+      if (!urlUsername || !urlUsername.trim()) {
+        setIs404NotFound(true);
+      } else {
+        const found = profiles.find(
+          (p) => p.username.toLowerCase() === urlUsername.trim().toLowerCase()
+        );
+        if (found) {
+          setIs404NotFound(false);
+          setActiveProfileId(found.id);
+        } else {
+          setIs404NotFound(true);
+        }
+      }
+    } else {
+      setIs404NotFound(false);
+    }
+  }, [profiles, urlUsername, mode, isGuestLocked]);
+
   const fetchSupabaseData = async () => {
-    // Fetch stats
+    // Fetch user profiles
     try {
-      const { data, error } = await supabase.from('user_stats').select('*').eq('id', 'default_user').single();
-      if (!error && data) {
-        const fetchedStats: UserStats = {
-          birthdayDaysLeft: data.birthday_days_left ?? 100,
-          savingsDollars: Number(data.savings_dollars ?? 10),
-          birthdayDate: data.birthday_date || undefined
-        };
-        setStats(fetchedStats);
-        localStorage.setItem('user_stats', JSON.stringify(fetchedStats));
+      const { data, error } = await supabase.from('user_profiles').select('*');
+      if (!error && data && data.length > 0) {
+        const fetchedProfiles: UserProfile[] = data.map((item) => ({
+          id: item.id,
+          username: item.username,
+          birthdayDaysLeft: item.birthday_days_left ?? 100,
+          savingsDollars: Number(item.savings_dollars ?? 10),
+          birthdayDate: item.birthday_date || undefined,
+          bankName: item.bank_name || 'Banco Principal',
+          accountNumber: item.account_number || '**** **** 1234',
+          bankNotes: item.bank_notes || '',
+          transactions: Array.isArray(item.transactions) ? item.transactions : []
+        }));
+        setProfiles(fetchedProfiles);
+        localStorage.setItem('app_user_profiles', JSON.stringify(fetchedProfiles));
+      } else {
+        // Upsert default Carolina profile into Supabase
+        await syncProfileToSupabase(DEFAULT_CAROLINA_PROFILE);
       }
     } catch (err) {
-      console.warn('Supabase fetch user_stats failed, using local state:', err);
+      console.warn('Supabase fetch user_profiles failed, using local state:', err);
     }
 
     // Fetch telemetry logs
@@ -166,6 +252,7 @@ export default function App() {
           action: item.action,
           payload: item.payload,
           timestamp: item.timestamp,
+          username: item.username || 'Carolina',
           metadata: item.metadata
         }));
         setLogs(fetchedLogs);
@@ -190,8 +277,26 @@ export default function App() {
     }
   };
 
-  const handleSwitchMode = (newMode: 'admin' | 'play', targetDay?: number, lockState?: boolean) => {
-    // If URL strictly locks to guest mode, deny switching to admin
+  const syncProfileToSupabase = async (profile: UserProfile) => {
+    try {
+      await supabase.from('user_profiles').upsert({
+        id: profile.id,
+        username: profile.username,
+        birthday_days_left: profile.birthdayDaysLeft,
+        savings_dollars: profile.savingsDollars,
+        birthday_date: profile.birthdayDate || null,
+        bank_name: profile.bankName || 'Banco Principal',
+        account_number: profile.accountNumber || '**** **** 1234',
+        bank_notes: profile.bankNotes || '',
+        transactions: profile.transactions || [],
+        updated_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Could not sync profile to Supabase:', err);
+    }
+  };
+
+  const handleSwitchMode = (newMode: 'admin' | 'play', targetDay?: number, lockState?: boolean, userForLink?: string) => {
     if (isGuestLocked && newMode === 'admin') {
       return;
     }
@@ -205,18 +310,27 @@ export default function App() {
       setSelectedDay(targetDay);
     }
 
+    const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
+    const usernameToUse = userForLink || activeProfile?.username || 'Carolina';
+
     // Update URL query parameters cleanly
     try {
       const currentUrl = new URL(window.location.href);
-      if (shouldLock) {
-        currentUrl.searchParams.set('guest', 'true');
+      if (shouldLock || newMode === 'play') {
+        currentUrl.searchParams.set('user', usernameToUse);
+        if (shouldLock) {
+          currentUrl.searchParams.set('guest', 'true');
+        } else {
+          currentUrl.searchParams.delete('guest');
+        }
         currentUrl.searchParams.set('mode', 'play');
       } else {
         currentUrl.searchParams.delete('guest');
-        currentUrl.searchParams.set('mode', newMode);
+        currentUrl.searchParams.set('mode', 'admin');
       }
       currentUrl.searchParams.set('day', dayToUse.toString());
       window.history.pushState({}, '', currentUrl.toString());
+      setUrlUsername(usernameToUse);
     } catch {
       // Ignore in non-standard environments
     }
@@ -224,6 +338,9 @@ export default function App() {
 
   const handleLogCapture = async (action: string, payload: any, metadata?: any) => {
     const activeConfig = getDailyGameByDay(selectedDay);
+    const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
+    const username = activeProfile?.username || 'Carolina';
+
     const newLog: TelemetryLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       gameId: activeConfig.id,
@@ -231,6 +348,7 @@ export default function App() {
       action,
       payload,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      username,
       metadata
     };
 
@@ -242,7 +360,7 @@ export default function App() {
       console.error('Failed to save to localStorage:', err);
     }
 
-    setLastDispatchedBanner(`Registrado: "${action}" para ${activeConfig.title}`);
+    setLastDispatchedBanner(`Registrado: "${action}" de ${username} para ${activeConfig.title}`);
 
     // Persist to Supabase
     try {
@@ -254,6 +372,7 @@ export default function App() {
           action: newLog.action,
           payload: newLog.payload,
           timestamp: newLog.timestamp,
+          username: newLog.username,
           metadata: newLog.metadata || {}
         }
       ]);
@@ -272,34 +391,61 @@ export default function App() {
     }
   };
 
-  const handleUpdateStats = async (newStats: UserStats) => {
-    setStats(newStats);
+  const handleSaveProfile = async (updatedProfile: UserProfile) => {
+    const updatedList = profiles.map((p) => (p.id === updatedProfile.id ? updatedProfile : p));
+    setProfiles(updatedList);
     try {
-      localStorage.setItem('user_stats', JSON.stringify(newStats));
+      localStorage.setItem('app_user_profiles', JSON.stringify(updatedList));
     } catch (err) {
-      console.error('Failed to save user stats:', err);
+      console.error('Failed to save user profiles:', err);
     }
 
-    // Persist to Supabase
+    await syncProfileToSupabase(updatedProfile);
+  };
+
+  const handleCreateProfile = async (newProfileData: Omit<UserProfile, 'id'>) => {
+    const newProfile: UserProfile = {
+      ...newProfileData,
+      id: `profile_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    };
+
+    const updatedList = [...profiles, newProfile];
+    setProfiles(updatedList);
+    setActiveProfileId(newProfile.id);
     try {
-      await supabase.from('user_stats').upsert({
-        id: 'default_user',
-        birthday_days_left: newStats.birthdayDaysLeft,
-        savings_dollars: newStats.savingsDollars,
-        birthday_date: newStats.birthdayDate || null,
-        updated_at: new Date().toISOString()
-      });
+      localStorage.setItem('app_user_profiles', JSON.stringify(updatedList));
     } catch (err) {
-      console.warn('Could not sync stats to Supabase:', err);
+      console.error('Failed to create user profile:', err);
+    }
+
+    await syncProfileToSupabase(newProfile);
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    if (profiles.length <= 1) return;
+    const updatedList = profiles.filter((p) => p.id !== profileId);
+    setProfiles(updatedList);
+    setActiveProfileId(updatedList[0].id);
+    try {
+      localStorage.setItem('app_user_profiles', JSON.stringify(updatedList));
+    } catch (err) {
+      console.error('Failed to delete user profile:', err);
+    }
+
+    try {
+      await supabase.from('user_profiles').delete().eq('id', profileId);
+    } catch (err) {
+      console.warn('Could not delete profile from Supabase:', err);
     }
   };
 
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
   const activeConfig = getDailyGameByDay(selectedDay);
 
   return (
     <div className="min-h-screen bg-[#F0F7FA] text-slate-900 font-sans flex flex-col justify-between p-4 sm:p-6 antialiased selection:bg-sky-200 selection:text-slate-950">
       {/* Top Header & Mode Switcher Bar */}
-      {!isGuestLocked ? (
+      {!isGuestLocked && !is404NotFound ? (
         <header className="w-full max-w-xl mx-auto pb-3 mb-3 flex flex-wrap gap-2 justify-between items-center text-xs border-b border-sky-200/70 font-mono">
           {/* Status indicator */}
           <div className="flex items-center gap-2">
@@ -332,7 +478,7 @@ export default function App() {
               <button
                 type="button"
                 id="switch-btn-user"
-                onClick={() => handleSwitchMode('play')}
+                onClick={() => handleSwitchMode('play', selectedDay, false, activeProfile?.username)}
                 className={`cursor-pointer px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 transition-all ${
                   mode === 'play'
                     ? 'bg-slate-900 text-white shadow-xs'
@@ -351,7 +497,7 @@ export default function App() {
                   type="button"
                   onClick={() => setIsUIModalOpen(true)}
                   className="cursor-pointer text-[10px] text-slate-700 hover:text-slate-950 px-2 py-1 rounded-lg bg-white hover:bg-sky-50 border border-sky-200 shadow-xs flex items-center gap-1 transition-all"
-                  title="Inspect UI Design Mockup & Aesthetics"
+                  title="Inspect UI Design Mockup"
                 >
                   <ImageIcon className="w-3 h-3 text-sky-600" />
                   <span className="hidden sm:inline">Mockup</span>
@@ -370,7 +516,7 @@ export default function App() {
             )}
           </div>
         </header>
-      ) : (
+      ) : !is404NotFound ? (
         <header className="w-full max-w-xl mx-auto pb-2.5 mb-2.5 flex justify-between items-center text-xs border-b border-sky-200/70 font-mono text-slate-500">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
@@ -378,14 +524,14 @@ export default function App() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
             </span>
             <span className="text-[11px] font-bold text-slate-900 tracking-tight">
-              ACTIVIDAD INTERACTIVA // EVENTO {selectedDay}
+              ACTIVIDAD INTERACTIVA PARA {activeProfile?.username?.toUpperCase()} // DÍA {selectedDay}
             </span>
           </div>
           <span className="text-[10px] font-semibold text-sky-800 bg-sky-100/90 px-2 py-0.5 rounded border border-sky-200 uppercase">
             1 SOLO TOQUE
           </span>
         </header>
-      )}
+      ) : null}
 
       {/* Global Notification Banner */}
       <div className="w-full max-w-xl mx-auto">
@@ -413,18 +559,53 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Primary Main Content View */}
+      {/* Primary Main Content View or 404 Route */}
       <main className="w-full max-w-xl mx-auto my-auto space-y-4">
-        {mode === 'admin' && !isGuestLocked ? (
+        {is404NotFound ? (
+          /* 404 Not Found View - Strictly NO User Information Shown */
+          <div className="bg-white border border-sky-200 rounded-3xl p-8 text-center shadow-lg space-y-4 my-8 font-mono">
+            <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center mx-auto">
+              <UserX className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-rose-600 uppercase px-3 py-1 rounded-full bg-rose-50 border border-rose-200 inline-block">
+                404 // Enlace No Válido o Sin Usuario
+              </span>
+              <h2 className="text-xl font-bold text-slate-900">
+                Página No Encontrada
+              </h2>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                El enlace al que intentas acceder no contiene un usuario válido o ha expirado. Ninguna información personal o de cuenta está disponible para esta dirección.
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-sky-100 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = window.location.pathname;
+                }}
+                className="cursor-pointer text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl transition-all shadow-xs"
+              >
+                Ir al Inicio / Panel de Administración
+              </button>
+            </div>
+          </div>
+        ) : mode === 'admin' && !isGuestLocked ? (
           <AdminDashboard
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
             logs={logs}
             onClearLogs={handleClearLogs}
-            onSwitchToUserMode={(day, locked) => handleSwitchMode('play', day, locked)}
+            onSwitchToUserMode={(day, locked, user) => handleSwitchMode('play', day, locked, user)}
             onLogCapture={handleLogCapture}
-            stats={stats}
-            onUpdateStats={handleUpdateStats}
+            profiles={profiles}
+            activeProfileId={activeProfileId}
+            onSelectProfile={setActiveProfileId}
+            onSaveProfile={handleSaveProfile}
+            onCreateProfile={handleCreateProfile}
+            onDeleteProfile={handleDeleteProfile}
           />
         ) : (
           <UserView
@@ -433,7 +614,7 @@ export default function App() {
             onLogCapture={handleLogCapture}
             onSwitchToAdmin={() => handleSwitchMode('admin')}
             isGuestLocked={isGuestLocked}
-            stats={stats}
+            profile={activeProfile}
           />
         )}
       </main>
@@ -441,9 +622,9 @@ export default function App() {
       {/* Footer */}
       <footer className="w-full max-w-xl mx-auto pt-6 text-center text-xs font-mono text-slate-400 space-y-1">
         <div>Una app pensada para conocernos de manera descomplicada</div>
-        {!isGuestLocked && (
+        {!isGuestLocked && !is404NotFound && (
           <div className="text-[10px] text-slate-500">
-            Modo actual: <span className="text-slate-800 font-semibold">{mode === 'admin' ? 'Administrador (Editor y Enlaces)' : 'Usuario (Solo interacción y lectura)'}</span>
+            Modo actual: <span className="text-slate-800 font-semibold">{mode === 'admin' ? 'Administrador' : `Usuario (${activeProfile?.username})`}</span>
           </div>
         )}
       </footer>
