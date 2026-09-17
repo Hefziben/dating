@@ -414,7 +414,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
             <span>Evaded clicks: <strong className="text-sky-700">{dodgeCount}</strong></span>
             {dodgeCount >= 3 && !isResolved && (
               <span className="text-amber-900 font-bold ml-1 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
-                (3+ evasions: 3 fallback options unlocked below)
+                (3+ evasiones: 3 opciones de reserva desbloqueadas a continuación)
               </span>
             )}
           </div>
@@ -506,7 +506,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-800 group-hover:text-sky-900">
-                            {config.confirmTomorrowText}
+                            1. Te confirmo mañana.
                           </div>
                           <div className="text-[10px] text-slate-500">
                             Respuesta alternativa sin presión.
@@ -531,7 +531,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-800 group-hover:text-sky-900">
-                            {config.photoInsteadText}
+                            2. En su lugar, te envío una foto mía.
                           </div>
                           <div className="text-[10px] text-slate-500">
                             Opción ligera para compartir foto.
@@ -556,7 +556,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-800 group-hover:text-slate-900">
-                            {config.haveBoyfriendText}
+                            3. Lo siento, tengo novio.
                           </div>
                           <div className="text-[10px] text-slate-500">
                             Límite claro y comunicación directa.
@@ -604,14 +604,14 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                   <CalendarClock className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-slate-900">Tomorrow Confirmation Protocol Set!</h4>
+                  <h4 className="text-base font-semibold text-slate-900">¡Confirmación establecido para mañana!</h4>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Totally fair! Sleep on it, check how your week looks, and no pressure at all. I'll follow up tomorrow.
+                    ¡Totalmente justo! Piénsalo bien, revisa cómo se presenta tu semana y sin ninguna presión. Te escribo mañana..
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-sky-200 rounded-lg text-[11px] font-mono text-slate-700">
                   <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Respuesta registrada: "{config.confirmTomorrowText}" ({dodgeCount} evasiones)</span>
+                  <span>Registrado: "Confirmo mañana" ({dodgeCount} evasions recorded)</span>
                 </div>
               </>
             )}
@@ -623,48 +623,18 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                   <Camera className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-slate-900">Photo Transmission Accepted!</h4>
+                  <h4 className="text-base font-semibold text-slate-900">¡Se aceptan envíos de fotos!</h4>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Deal! A photo is a zero-effort, high-efficiency compromise. You can transmit it right here or text it over.
+                    ¡Trato hecho! Una foto es una solución rápida y sencilla. Puedes enviarla whatsapp. nada pasado de tono porfa jajajaj
                   </p>
                 </div>
 
                 {/* Optional interactive photo drop/preview */}
-                <div className="max-w-xs mx-auto p-3 bg-white border border-sky-200 rounded-xl space-y-2">
-                  {uploadedPhotoPreview ? (
-                    <div className="space-y-2">
-                      <img
-                        src={uploadedPhotoPreview}
-                        alt="Shared preview"
-                        className="w-full h-44 object-cover rounded-lg border border-sky-200"
-                      />
-                      <div className="text-[11px] font-mono text-sky-700 font-semibold flex items-center justify-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Photo payload captured!</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <label className="cursor-pointer block border-2 border-dashed border-sky-200 hover:border-sky-400 p-4 rounded-lg bg-sky-50/40 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                      />
-                      <Camera className="w-6 h-6 mx-auto text-sky-500 mb-1" />
-                      <span className="text-[11px] font-mono text-slate-700 block font-medium">
-                        Click to transmit selfie / photo
-                      </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        (or send directly via text / iMessage)
-                      </span>
-                    </label>
-                  )}
-                </div>
+               
 
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-sky-200 rounded-lg text-[11px] font-mono text-slate-700">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
-                  <span>Respuesta registrada: "{config.photoInsteadText}"</span>
+                  <span>Logged: "En su lugar, te envío una foto mía".</span>
                 </div>
               </>
             )}
@@ -676,14 +646,14 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                   <Heart className="w-6 h-6 text-slate-500" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-slate-900">Boundary Fully Respected!</h4>
+                  <h4 className="text-base font-semibold text-slate-900">¡Límites totalmente respetados!</h4>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                    Thank you so much for being direct and honest—genuinely appreciate you letting me know! Wishing you both the very best.
+                    Muchísimas gracias por tu franqueza y honestidad; ¡de verdad aprecio que me lo hayas hecho saber! Les deseo lo mejor a ambos..
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-sky-200 rounded-lg text-[11px] font-mono text-slate-700">
                   <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Respuesta registrada: "{config.haveBoyfriendText}"</span>
+                  <span>Mensaje registrado: "Lo siento, tengo novio".</span>
                 </div>
               </>
             )}
