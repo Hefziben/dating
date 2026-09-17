@@ -1,0 +1,6 @@
+{
+  "name": "Daily Game RSVP App",
+  "description": "A dynamic daily mini-game and RSVP web app designed for low-pressure interactions and response capture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
