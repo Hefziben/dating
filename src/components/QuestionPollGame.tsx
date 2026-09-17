@@ -207,6 +207,11 @@ export default function QuestionPollGame({ onSuccess, isAdmin = false }: Questio
       }
     }
 
+    const selectedOptObj = config.options.find(o => o.id === selectedOptionId);
+    const rawOptionText = isFreeTextSelected
+      ? freeTextAnswer.trim()
+      : (selectedOptObj ? selectedOptObj.text : chosenText);
+
     const payload = {
       question: config.question,
       selectedOption: chosenText,
@@ -225,10 +230,13 @@ export default function QuestionPollGame({ onSuccess, isAdmin = false }: Questio
       colors: ['#F43F5E', '#EC4899', '#FDA4AF', '#FBBF24', '#A78BFA']
     });
 
-    onSuccess('POLL_ANSWER_SUBMITTED', `Escogió: [${letter}] ${chosenText}`, {
+    const summaryMessage = `Pregunta: "${config.question}" | Respuesta escogida: "${chosenText}"`;
+
+    onSuccess('POLL_ANSWER_SUBMITTED', summaryMessage, {
       pollAnswer: {
         question: config.question,
         selectedOption: chosenText,
+        optionText: rawOptionText,
         customText: isFreeTextSelected ? freeTextAnswer.trim() : (extraNote.trim() || undefined)
       }
     });
