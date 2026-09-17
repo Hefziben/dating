@@ -35,7 +35,7 @@ export interface RSVPConfig {
 }
 
 const DEFAULT_RSVP_CONFIG: RSVPConfig = {
-  protocolBadge: 'ZERO-TYPING RSVP PROTOCOL',
+  protocolBadge: 'Protocolo - Cero escritura',
   question: '¿Nos tomamos un café o un trago este viernes después del trabajo?',
   subtext: 'Respuesta en 1 toque. Diseñado para ahorrarte escribir en el teclado.',
   yesOptionText: 'Opción A: ¡Sí, acepto con gusto!',
@@ -49,8 +49,8 @@ const LOCAL_STORAGE_KEY = 'user_custom_rsvp_config';
 type ResolutionType = 'YES' | 'CONFIRM_TOMORROW' | 'PHOTO_INSTEAD' | 'HAVE_BOYFRIEND' | null;
 
 const DODGE_MESSAGES = [
-  'Nice reflex test! Try the other button.',
-  'ERR_404: "No" function deprecated in v1.2.',
+  '¡Buenos reflejos! Intenta con otro botón',
+  'ERR_404: "No" esta función ya caducó bonita',
   'Evasion subroutine active.',
   'Quantum tunneling evasion initiated.',
   'Option B requires 999 APM agility.',
@@ -231,7 +231,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
               <div className="flex items-center gap-2">
                 <Pencil className="w-4 h-4 text-sky-600" />
                 <h3 className="text-xs font-mono font-bold text-slate-900 uppercase">
-                  Personalizar Invitación RSVP (Día 1)
+                  Personalizar Invitación RSVP (Evento 1)
                 </h3>
               </div>
             </div>
@@ -537,7 +537,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-sky-200 rounded-lg text-[11px] font-mono text-slate-700">
                   <HeartHandshake className="w-3.5 h-3.5 text-sky-600" />
-                  <span>Dodge attempts before consent: {dodgeCount}</span>
+                  <span>Intentos de esquivar antes de acuerdo: {dodgeCount}</span>
                 </div>
               </>
             )}

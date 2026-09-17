@@ -378,7 +378,7 @@ export default function App() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
             </span>
             <span className="text-[11px] font-bold text-slate-900 tracking-tight">
-              ACTIVIDAD INTERACTIVA // DÍA {selectedDay}
+              ACTIVIDAD INTERACTIVA // EVENTO {selectedDay}
             </span>
           </div>
           <span className="text-[10px] font-semibold text-sky-800 bg-sky-100/90 px-2 py-0.5 rounded border border-sky-200 uppercase">
@@ -440,7 +440,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="w-full max-w-xl mx-auto pt-6 text-center text-xs font-mono text-slate-400 space-y-1">
-        <div>Engineered for effortless, zero-screen-fatigue communication.</div>
+        <div>Una app pensada para conocernos de manera descomplicada</div>
         {!isGuestLocked && (
           <div className="text-[10px] text-slate-500">
             Modo actual: <span className="text-slate-800 font-semibold">{mode === 'admin' ? 'Administrador (Editor y Enlaces)' : 'Usuario (Solo interacción y lectura)'}</span>

@@ -55,17 +55,12 @@ const DEFAULT_SUPERPOWER_CONFIG: QuestionConfig = {
       id: 'opt_c',
       letter: 'C',
       text: 'Invisibilidad (para enterarme de chismes sin que me vean).'
-    },
-    {
-      id: 'opt_d',
-      letter: 'D',
-      text: 'Detener el tiempo (para poder dormir un par de horas más por las mañanas).'
     }
   ],
   freeTextOption: {
     id: 'opt_free',
     letter: 'E',
-    label: 'Otro... detalla:',
+    label: 'Otro:',
     placeholder: 'Escribe tu superpoder personalizado o detalle aquí...'
   }
 };
@@ -99,7 +94,7 @@ const PRESET_QUESTIONS: { label: string; config: QuestionConfig }[] = [
       freeTextOption: {
         id: 'opt_free',
         letter: 'D',
-        label: 'Otro... detalla:',
+        label: 'Otro:',
         placeholder: 'Cuéntame tu plan ideal exacto...'
       }
     }
@@ -133,7 +128,7 @@ const PRESET_QUESTIONS: { label: string; config: QuestionConfig }[] = [
       freeTextOption: {
         id: 'opt_free',
         letter: 'E',
-        label: 'Otro... detalla:',
+        label: 'Otro:',
         placeholder: '¿Cuál es ese platillo infalible para ti?...'
       }
     }
@@ -475,7 +470,7 @@ export default function QuestionPollGame({ onSuccess, isAdmin = false }: Questio
                     value={editFreeTextLabel}
                     onChange={e => setEditFreeTextLabel(e.target.value)}
                     className="w-full text-xs font-sans p-2 rounded-lg border border-sky-200 bg-white focus:outline-none focus:border-sky-400 text-slate-900"
-                    placeholder="Otro... detalla:"
+                    placeholder="Otro:"
                   />
                 </div>
                 <div>

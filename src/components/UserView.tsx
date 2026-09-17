@@ -39,7 +39,7 @@ export default function UserView({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
               </span>
-              <span>INVITACIÓN ESPECIAL // DÍA {selectedDay}</span>
+              <span>INVITACIÓN ESPECIAL // Evento {selectedDay}</span>
             </div>
             <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-100/80 border border-amber-300/80 text-amber-900 font-semibold">
               {activeConfig.badge}
