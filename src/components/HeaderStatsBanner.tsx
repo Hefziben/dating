@@ -9,6 +9,9 @@ interface HeaderStatsBannerProps {
 }
 
 export default function HeaderStatsBanner({ stats, className = '', isCompact = false }: HeaderStatsBannerProps) {
+  const daysLeft = stats?.birthdayDaysLeft ?? 100;
+  const savings = stats?.savingsDollars ?? 10;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
@@ -23,7 +26,7 @@ export default function HeaderStatsBanner({ stats, className = '', isCompact = f
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="text-[11px] text-slate-500">Faltan</span>
           <span className="font-bold text-slate-900 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-950">
-            {stats.birthdayDaysLeft} {stats.birthdayDaysLeft === 1 ? 'día' : 'días'}
+            {daysLeft} {daysLeft === 1 ? 'día' : 'días'}
           </span>
           <span className="text-[11px] text-slate-700">para tu cumpleaños 🎂</span>
         </div>
@@ -40,7 +43,7 @@ export default function HeaderStatsBanner({ stats, className = '', isCompact = f
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="text-[11px] text-slate-500">Tienes</span>
           <span className="font-bold text-slate-900 px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-950">
-            ${stats.savingsDollars.toLocaleString('es-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} dólares
+            ${savings.toLocaleString('es-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} dólares
           </span>
           <span className="text-[11px] text-slate-700">en tu cuenta de ahorros 💰</span>
         </div>

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { Sparkles, Heart, ShieldCheck, Lock } from 'lucide-react';
-import { DailyGameConfig } from '../types';
+import { DailyGameConfig, UserStats } from '../types';
+import HeaderStatsBanner from './HeaderStatsBanner';
 import ThumbSaverGame from './ThumbSaverGame';
 import QuestionPollGame from './QuestionPollGame';
 import RouletteWheelGame from './RouletteWheelGame';
@@ -12,6 +13,7 @@ interface UserViewProps {
   onLogCapture: (action: string, payload: any, metadata?: any) => void;
   onSwitchToAdmin: () => void;
   isGuestLocked?: boolean;
+  stats?: UserStats;
 }
 
 export default function UserView({
@@ -19,10 +21,14 @@ export default function UserView({
   activeConfig,
   onLogCapture,
   onSwitchToAdmin,
-  isGuestLocked = false
+  isGuestLocked = false,
+  stats
 }: UserViewProps) {
   return (
     <div className="w-full max-w-xl mx-auto space-y-4 my-auto">
+      {/* Header Stats Banner showing birthday & savings */}
+      {stats && <HeaderStatsBanner stats={stats} />}
+
       {/* Top Header for Guest / User View */}
       <div className="border border-sky-200/80 bg-white/90 p-5 sm:p-6 rounded-2xl shadow-sm relative overflow-hidden backdrop-blur">
         {/* Guest View Header Badge & Title */}

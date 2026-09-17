@@ -11,7 +11,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { DAILY_GAMES_LIST, getDailyGameByDay, calculateScheduledDay } from './data/gamesConfig';
-import { TelemetryLog } from './types';
+import { TelemetryLog, UserStats } from './types';
 import AdminDashboard from './components/AdminDashboard';
 import UserView from './components/UserView';
 import TelemetryDrawer from './components/TelemetryDrawer';
@@ -26,6 +26,20 @@ export default function App() {
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
   const [isUIModalOpen, setIsUIModalOpen] = useState(false);
   const [lastDispatchedBanner, setLastDispatchedBanner] = useState<string | null>(null);
+  const [stats, setStats] = useState<UserStats>(() => {
+    try {
+      const saved = localStorage.getItem('user_stats');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (err) {
+      console.error('Failed to parse user stats:', err);
+    }
+    return {
+      birthdayDaysLeft: 100,
+      savingsDollars: 10
+    };
+  });
 
   useEffect(() => {
     // 1. Calculate calendar-scheduled day
@@ -142,6 +156,15 @@ export default function App() {
   const handleClearLogs = () => {
     localStorage.removeItem('app_metrics');
     setLogs([]);
+  };
+
+  const handleUpdateStats = (newStats: UserStats) => {
+    setStats(newStats);
+    try {
+      localStorage.setItem('user_stats', JSON.stringify(newStats));
+    } catch (err) {
+      console.error('Failed to save user stats:', err);
+    }
   };
 
   const activeConfig = getDailyGameByDay(selectedDay);
@@ -273,6 +296,8 @@ export default function App() {
             onClearLogs={handleClearLogs}
             onSwitchToUserMode={(day, locked) => handleSwitchMode('play', day, locked)}
             onLogCapture={handleLogCapture}
+            stats={stats}
+            onUpdateStats={handleUpdateStats}
           />
         ) : (
           <UserView
@@ -281,6 +306,7 @@ export default function App() {
             onLogCapture={handleLogCapture}
             onSwitchToAdmin={() => handleSwitchMode('admin')}
             isGuestLocked={isGuestLocked}
+            stats={stats}
           />
         )}
       </main>
