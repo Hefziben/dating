@@ -4,6 +4,30 @@ export type GameId =
   | 'terminal_adventure'
   | 'recommendation_engine';
 
+export interface BankTransaction {
+  id: string;
+  type: 'deposit' | 'withdrawal' | 'note';
+  amount: number;
+  description: string;
+  date: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  birthdayDaysLeft: number;
+  savingsDollars: number;
+  birthdayDate?: string;
+  bankName?: string;
+  accountNumber?: string;
+  bankNotes?: string;
+  transactions?: BankTransaction[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type UserStats = UserProfile;
+
 export interface TelemetryLog {
   id: string;
   gameId: GameId;
@@ -11,6 +35,7 @@ export interface TelemetryLog {
   action: string;
   payload: string | Record<string, any>;
   timestamp: string;
+  username?: string;
   metadata?: {
     dodgeAttempts?: number;
     wordleAttempts?: number;
@@ -31,10 +56,3 @@ export interface DailyGameConfig {
   suggestedText: string;
   badge: string;
 }
-
-export interface UserStats {
-  birthdayDaysLeft: number;
-  savingsDollars: number;
-  birthdayDate?: string; // Optional target date (YYYY-MM-DD) for automatic countdown calculation
-}
-

@@ -1,9 +1,9 @@
 import { motion } from 'motion/react';
-import { Cake, DollarSign, Sparkles } from 'lucide-react';
-import { UserStats } from '../types';
+import { Cake, DollarSign, Building2, CreditCard, Sparkles } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface HeaderStatsBannerProps {
-  stats: UserStats;
+  stats: UserProfile;
   className?: string;
   isCompact?: boolean;
 }
@@ -11,6 +11,8 @@ interface HeaderStatsBannerProps {
 export default function HeaderStatsBanner({ stats, className = '', isCompact = false }: HeaderStatsBannerProps) {
   const daysLeft = stats?.birthdayDaysLeft ?? 100;
   const savings = stats?.savingsDollars ?? 10;
+  const bankName = stats?.bankName || 'Banco Principal';
+  const username = stats?.username || 'Carolina';
 
   return (
     <motion.div
@@ -28,11 +30,11 @@ export default function HeaderStatsBanner({ stats, className = '', isCompact = f
           <span className="font-bold text-slate-900 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-950">
             {daysLeft} {daysLeft === 1 ? 'día' : 'días'}
           </span>
-          <span className="text-[11px] text-slate-700">para tu cumpleaños 🎂</span>
+          <span className="text-[11px] text-slate-700">para tu cumpleaños, {username} 🎂</span>
         </div>
       </div>
 
-      {/* Subtle Divider for mobile/desktop */}
+      {/* Subtle Divider */}
       <div className="hidden sm:block w-px h-4 bg-sky-200/80" />
 
       {/* Savings Account Item */}
@@ -43,9 +45,9 @@ export default function HeaderStatsBanner({ stats, className = '', isCompact = f
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="text-[11px] text-slate-500">Tienes</span>
           <span className="font-bold text-slate-900 px-1.5 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-950">
-            ${savings.toLocaleString('es-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} dólares
+            ${savings.toLocaleString('es-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} USD
           </span>
-          <span className="text-[11px] text-slate-700">en tu cuenta de ahorros 💰</span>
+          <span className="text-[11px] text-slate-700">en {bankName} 💰</span>
         </div>
       </div>
     </motion.div>
