@@ -1,5 +1,5 @@
 {
-  "name": "Daily Game RSVP App",
+  "name": "Concerte más App",
   "description": "App descomplicada para saber mas de ti.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
