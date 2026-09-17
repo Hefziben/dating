@@ -14,7 +14,7 @@ export interface TelemetryLog {
   metadata?: {
     dodgeAttempts?: number;
     wordleAttempts?: number;
-    pollAnswer?: { question: string; selectedOption: string; customText?: string };
+    pollAnswer?: { question: string; selectedOption: string; optionText?: string; customText?: string };
     roulettePrize?: { prize: string; emoji: string; description?: string };
     jokeReaction?: { jokeId: string; question: string; answer: string; reaction?: string };
     quizChoices?: Record<string, string>;

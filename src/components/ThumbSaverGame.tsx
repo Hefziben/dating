@@ -30,6 +30,9 @@ export interface RSVPConfig {
   subtext: string;
   yesOptionText: string;
   noOptionText: string;
+  confirmTomorrowText: string;
+  photoInsteadText: string;
+  haveBoyfriendText: string;
   celebrationTitle: string;
   celebrationMessage: string;
 }
@@ -40,6 +43,9 @@ const DEFAULT_RSVP_CONFIG: RSVPConfig = {
   subtext: 'Respuesta en 1 toque. Diseñado para ahorrarte escribir en el teclado.',
   yesOptionText: 'Opción A: ¡Sí, acepto con gusto!',
   noOptionText: 'Opción B: Declinar',
+  confirmTomorrowText: '1. Te confirmo mañana.',
+  photoInsteadText: '2. Te mando una foto mía en su lugar.',
+  haveBoyfriendText: '3. Lo siento, tengo novio.',
   celebrationTitle: '¡Cita confirmada! Plan cerrado ☕✨',
   celebrationMessage: 'Queda agendado para este viernes. Los detalles y hora los coordinamos en breve.'
 };
@@ -62,7 +68,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        return { ...DEFAULT_RSVP_CONFIG, ...JSON.parse(saved) };
       }
     } catch {
       // Ignore
@@ -135,9 +141,13 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
       colors: ['#F43F5E', '#EC4899', '#FDA4AF', '#F472B6', '#FFFFFF']
     });
 
-    onSuccess('RSVP_ACCEPTED', 'Yes, coffee or drink this Friday!', {
+    const choiceText = config.yesOptionText;
+    const summaryMsg = `Pregunta: "${config.question}" | Respuesta escogida: "${choiceText}"`;
+
+    onSuccess('RSVP_ACCEPTED', summaryMsg, {
       dodgeAttempts: dodgeCount,
-      choice: 'Option A: Absolutely, yes',
+      question: config.question,
+      choice: choiceText,
       acceptedAt: new Date().toISOString()
     });
   };
@@ -145,37 +155,40 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
   const handleAlternativeOption = (type: 'CONFIRM_TOMORROW' | 'PHOTO_INSTEAD' | 'HAVE_BOYFRIEND') => {
     setResolution(type);
 
+    let choiceText = '';
+    let actionType = '';
+
     if (type === 'CONFIRM_TOMORROW') {
+      choiceText = config.confirmTomorrowText;
+      actionType = 'RSVP_CONFIRM_TOMORROW';
       confetti({
         particleCount: 50,
         spread: 50,
         origin: { y: 0.65 },
         colors: ['#F43F5E', '#FBBF24', '#FFFFFF']
       });
-      onSuccess('RSVP_CONFIRM_TOMORROW', 'I confirm tomorrow.', {
-        dodgeAttempts: dodgeCount,
-        choice: '1. I confirm tomorrow',
-        timestamp: new Date().toISOString()
-      });
     } else if (type === 'PHOTO_INSTEAD') {
+      choiceText = config.photoInsteadText;
+      actionType = 'RSVP_PHOTO_INSTEAD';
       confetti({
         particleCount: 60,
         spread: 60,
         origin: { y: 0.65 },
         colors: ['#EC4899', '#F43F5E', '#A855F7']
       });
-      onSuccess('RSVP_PHOTO_INSTEAD', 'I send you a photo of me instead.', {
-        dodgeAttempts: dodgeCount,
-        choice: '2. I send you a photo of me instead',
-        timestamp: new Date().toISOString()
-      });
     } else if (type === 'HAVE_BOYFRIEND') {
-      onSuccess('RSVP_HAVE_BOYFRIEND', 'I am sorry, I have a boyfriend.', {
-        dodgeAttempts: dodgeCount,
-        choice: '3. I am sorry, I have a boyfriend',
-        timestamp: new Date().toISOString()
-      });
+      choiceText = config.haveBoyfriendText;
+      actionType = 'RSVP_HAVE_BOYFRIEND';
     }
+
+    const summaryMsg = `Pregunta: "${config.question}" | Respuesta escogida: "${choiceText}"`;
+
+    onSuccess(actionType, summaryMsg, {
+      dodgeAttempts: dodgeCount,
+      question: config.question,
+      choice: choiceText,
+      timestamp: new Date().toISOString()
+    });
   };
 
   const handlePhotoUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -281,6 +294,48 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                     type="text"
                     value={editConfig.noOptionText}
                     onChange={e => setEditConfig({ ...editConfig, noOptionText: e.target.value })}
+                    className="w-full text-xs p-1.5 rounded-lg border border-sky-200 bg-white focus:outline-none focus:border-sky-400 text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-sky-100 pt-2">
+                <label className="block text-[10px] font-mono text-slate-500 font-semibold">
+                  Opciones alternativas adicionales (al esquivar 3 veces):
+                </label>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 mb-0.5">
+                    Opción alternativa 1:
+                  </label>
+                  <input
+                    type="text"
+                    value={editConfig.confirmTomorrowText}
+                    onChange={e => setEditConfig({ ...editConfig, confirmTomorrowText: e.target.value })}
+                    className="w-full text-xs p-1.5 rounded-lg border border-sky-200 bg-white focus:outline-none focus:border-sky-400 text-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 mb-0.5">
+                    Opción alternativa 2:
+                  </label>
+                  <input
+                    type="text"
+                    value={editConfig.photoInsteadText}
+                    onChange={e => setEditConfig({ ...editConfig, photoInsteadText: e.target.value })}
+                    className="w-full text-xs p-1.5 rounded-lg border border-sky-200 bg-white focus:outline-none focus:border-sky-400 text-slate-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 mb-0.5">
+                    Opción alternativa 3:
+                  </label>
+                  <input
+                    type="text"
+                    value={editConfig.haveBoyfriendText}
+                    onChange={e => setEditConfig({ ...editConfig, haveBoyfriendText: e.target.value })}
                     className="w-full text-xs p-1.5 rounded-lg border border-sky-200 bg-white focus:outline-none focus:border-sky-400 text-slate-700"
                   />
                 </div>
@@ -438,7 +493,7 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 pt-1">
-                    {/* OPTION 1: I confirm tomorrow */}
+                    {/* OPTION 1: Confirm tomorrow */}
                     <button
                       type="button"
                       id="btn-opt-confirm-tomorrow"
@@ -454,16 +509,16 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                             1. Te confirmo mañana.
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Need time to check your schedule or rest up. Check in tomorrow.
+                            Respuesta alternativa sin presión.
                           </div>
                         </div>
                       </div>
                       <span className="text-[10px] font-mono text-slate-400 group-hover:text-sky-700 font-medium">
-                        [Select]
+                        [Seleccionar]
                       </span>
                     </button>
 
-                    {/* OPTION 2: I send a you a photo of me instead */}
+                    {/* OPTION 2: Photo instead */}
                     <button
                       type="button"
                       id="btn-opt-photo-instead"
@@ -479,16 +534,16 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                             2. En su lugar, te envío una foto mía.
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Zero-social-energy alternative: swap a selfie/snap instead of going out.
+                            Opción ligera para compartir foto.
                           </div>
                         </div>
                       </div>
                       <span className="text-[10px] font-mono text-slate-400 group-hover:text-sky-700 font-medium">
-                        [Select]
+                        [Seleccionar]
                       </span>
                     </button>
 
-                    {/* OPTION 3: I am sorry, I have a boyfriend */}
+                    {/* OPTION 3: Have a boyfriend */}
                     <button
                       type="button"
                       id="btn-opt-have-boyfriend"
@@ -504,12 +559,12 @@ export default function ThumbSaverGame({ onSuccess, isAdmin = false }: ThumbSave
                             3. Lo siento, tengo novio.
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Clear, respectful boundary. Honest and straightforward communication.
+                            Límite claro y comunicación directa.
                           </div>
                         </div>
                       </div>
                       <span className="text-[10px] font-mono text-slate-400 group-hover:text-slate-700 font-medium">
-                        [Select]
+                        [Seleccionar]
                       </span>
                     </button>
                   </div>
