@@ -41,7 +41,7 @@ export default function AdminStatsManager({
 }: AdminStatsManagerProps) {
   const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
 
-  const [username, setUsername] = useState<string>(activeProfile?.username || 'Carolina');
+  const [username, setUsername] = useState<string>(activeProfile?.username || 'Usuario');
   const [daysLeft, setDaysLeft] = useState<number>(activeProfile?.birthdayDaysLeft ?? 100);
   const [savings, setSavings] = useState<number>(activeProfile?.savingsDollars ?? 10);
   const [birthdayDate, setBirthdayDate] = useState<string>(activeProfile?.birthdayDate || '');
@@ -54,6 +54,9 @@ export default function AdminStatsManager({
   const [newUsername, setNewUsername] = useState('');
   const [newDaysLeft, setNewDaysLeft] = useState(100);
   const [newSavings, setNewSavings] = useState(10);
+
+  // Delete profile confirmation state
+  const [profileToDelete, setProfileToDelete] = useState<UserProfile | null>(null);
 
   // New transaction state
   const [txType, setTxType] = useState<'deposit' | 'withdrawal' | 'note'>('deposit');
@@ -209,29 +212,48 @@ export default function AdminStatsManager({
           </button>
         </div>
 
-        {/* Profile Tabs */}
+        {/* Profile Tabs with Delete Button */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {profiles.map((p) => {
             const isSelected = p.id === activeProfileId;
             return (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                onClick={() => onSelectProfile(p.id)}
-                className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-mono font-semibold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 border ${
+                className={`flex items-center rounded-xl border transition-all whitespace-nowrap shrink-0 ${
                   isSelected
-                    ? 'bg-sky-500 text-white border-sky-600 shadow-xs font-bold'
+                    ? 'bg-sky-500 text-white border-sky-600 shadow-xs'
                     : 'bg-sky-50/60 hover:bg-sky-100 text-slate-700 border-sky-200'
                 }`}
               >
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    isSelected ? 'bg-amber-300' : 'bg-sky-400'
+                <button
+                  type="button"
+                  onClick={() => onSelectProfile(p.id)}
+                  className="cursor-pointer px-3.5 py-2 text-xs font-mono font-semibold flex items-center gap-2"
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isSelected ? 'bg-amber-300' : 'bg-sky-400'
+                    }`}
+                  />
+                  <span>{p.username}</span>
+                  <span className="text-[10px] opacity-80">(${p.savingsDollars})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProfileToDelete(p);
+                  }}
+                  className={`cursor-pointer p-1.5 pr-2.5 rounded-r-xl transition-colors ${
+                    isSelected
+                      ? 'text-sky-100 hover:text-white hover:bg-sky-600'
+                      : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
                   }`}
-                />
-                <span>{p.username}</span>
-                <span className="text-[10px] opacity-80">(${p.savingsDollars})</span>
-              </button>
+                  title={`Eliminar perfil de ${p.username}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             );
           })}
         </div>
@@ -255,23 +277,16 @@ export default function AdminStatsManager({
                   placeholder="Nombre de usuario"
                   required
                 />
-                {username.toLowerCase() === 'carolina' && (
-                  <span className="text-[10px] font-mono bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-semibold">
-                    Perfil Principal Migrado
-                  </span>
-                )}
               </div>
 
-              {profiles.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => onDeleteProfile(activeProfile.id)}
-                  className="cursor-pointer text-xs font-mono text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Eliminar Perfil</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setProfileToDelete(activeProfile)}
+                className="cursor-pointer text-xs font-mono text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Eliminar Perfil</span>
+              </button>
             </div>
 
             {/* Grid for Birthday & Bank Account Info */}
@@ -532,6 +547,66 @@ export default function AdminStatsManager({
           </div>
         </form>
       )}
+
+      {/* Modal for Deleting Profile Confirmation */}
+      <AnimatePresence>
+        {profileToDelete && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-rose-200 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4 font-mono text-xs"
+            >
+              <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+                <h3 className="font-bold text-rose-600 uppercase flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  <span>Confirmar Eliminación de Perfil</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setProfileToDelete(null)}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-2 text-slate-700">
+                <p>
+                  ¿Estás seguro de que deseas eliminar el perfil de{' '}
+                  <strong className="text-slate-900 underline">{profileToDelete.username}</strong>?
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Esta acción eliminará sus datos guardados (cumpleaños, saldo y movimientos bancarios).
+                  {profiles.length <= 1 &&
+                    ' Dado que es el único perfil existente, al eliminarlo se reestablecerá un perfil predeterminado.'}
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileToDelete(null)}
+                  className="px-3.5 py-2 rounded-xl border border-sky-200 text-slate-600 hover:bg-sky-50 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteProfile(profileToDelete.id);
+                    setProfileToDelete(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition-colors shadow-xs"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal for Creating New Profile */}
       <AnimatePresence>

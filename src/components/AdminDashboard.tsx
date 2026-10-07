@@ -70,7 +70,7 @@ export default function AdminDashboard({
   const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
 
   // Generate unique URL for each profile & day combination
-  const getDayUserLink = (dayNumber: number, username: string = activeProfile?.username || 'Carolina'): string => {
+  const getDayUserLink = (dayNumber: number, username: string = activeProfile?.username || 'Usuario'): string => {
     const origin = window.location.origin;
     const pathname = window.location.pathname;
     return `${origin}${pathname}?user=${encodeURIComponent(username)}&day=${dayNumber}&mode=play&guest=true`;
@@ -155,7 +155,7 @@ export default function AdminDashboard({
 
   const filteredLogs = logs.filter((log) => {
     if (logUserFilter === 'all') return true;
-    return (log.username || 'Carolina').toLowerCase() === logUserFilter.toLowerCase();
+    return (log.username || 'Usuario').toLowerCase() === logUserFilter.toLowerCase();
   });
 
   return (
@@ -265,7 +265,7 @@ export default function AdminDashboard({
                 </span>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Cada enlace incluye los parámetros <strong>&user={activeProfile?.username}&guest=true</strong>. Cuando {activeProfile?.username} abra el enlace en su celular, entrará en modo usuario con su propio cumpleaños y saldo bancario. Si alguien entra sin usuario o con un usuario no existente, verá la pantalla 404 sin información personal.
+                Cada enlace incluye los parámetros <strong>&user={activeProfile?.username}&guest=true</strong>. Cuando {activeProfile?.username} abra el enlace en su celular, entrará en modo usuario con su propio cumpleaños y saldo bancario.
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function AdminDashboard({
           {/* Cards for each day's link */}
           <div className="grid grid-cols-1 gap-3.5">
             {DAILY_GAMES_LIST.map((game) => {
-              const currentUsername = activeProfile?.username || 'Carolina';
+              const currentUsername = activeProfile?.username || 'Usuario';
               const userLink = getDayUserLink(game.dayNumber, currentUsername);
               const key = `${currentUsername}_${game.dayNumber}`;
               const isCopied = copiedKey === key;
@@ -559,7 +559,7 @@ export default function AdminDashboard({
                         {log.gameTitle}
                       </span>
                       <span className="text-[10px] px-2 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-300">
-                        Usuario: {log.username || 'Carolina'}
+                        Usuario: {log.username || 'Usuario'}
                       </span>
                     </div>
                     <span className="text-slate-400 text-[10px]">{log.timestamp}</span>

@@ -18,9 +18,9 @@ import UserView from './components/UserView';
 import TelemetryDrawer from './components/TelemetryDrawer';
 import UIExampleModal from './components/UIExampleModal';
 
-const DEFAULT_CAROLINA_PROFILE: UserProfile = {
-  id: 'profile_carolina',
-  username: 'Carolina',
+const DEFAULT_USER_PROFILE: UserProfile = {
+  id: 'profile_default',
+  username: 'Usuario',
   birthdayDaysLeft: 100,
   savingsDollars: 10,
   bankName: 'Banco Principal',
@@ -31,7 +31,7 @@ const DEFAULT_CAROLINA_PROFILE: UserProfile = {
       id: 'tx_init',
       type: 'deposit',
       amount: 10,
-      description: 'Saldo Inicial Migrado',
+      description: 'Saldo Inicial',
       date: '01/01/2025'
     }
   ]
@@ -57,13 +57,13 @@ export default function App() {
           return parsed;
         }
       }
-      // Migrate legacy single user_stats to Carolina profile if exists
+      // Migrate legacy single user_stats to default profile if exists
       const legacyStats = localStorage.getItem('user_stats');
       if (legacyStats) {
         const parsedStats = JSON.parse(legacyStats);
         return [
           {
-            ...DEFAULT_CAROLINA_PROFILE,
+            ...DEFAULT_USER_PROFILE,
             birthdayDaysLeft: parsedStats.birthdayDaysLeft ?? 100,
             savingsDollars: Number(parsedStats.savingsDollars ?? 10),
             birthdayDate: parsedStats.birthdayDate || undefined
@@ -73,10 +73,10 @@ export default function App() {
     } catch (err) {
       console.error('Failed to parse user profiles:', err);
     }
-    return [DEFAULT_CAROLINA_PROFILE];
+    return [DEFAULT_USER_PROFILE];
   });
 
-  const [activeProfileId, setActiveProfileId] = useState<string>(() => profiles[0]?.id || 'profile_carolina');
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => profiles[0]?.id || 'profile_default');
   const [urlUsername, setUrlUsername] = useState<string | null>(null);
   const [is404NotFound, setIs404NotFound] = useState(false);
 
@@ -171,7 +171,7 @@ export default function App() {
             action: newData.action,
             payload: newData.payload,
             timestamp: newData.timestamp,
-            username: newData.username || 'Carolina',
+            username: newData.username || 'Usuario',
             metadata: newData.metadata
           };
           setLogs((prev) => {
@@ -198,16 +198,51 @@ export default function App() {
   useEffect(() => {
     if (mode === 'play' || isGuestLocked) {
       if (!urlUsername || !urlUsername.trim()) {
-        setIs404NotFound(true);
+        // Default to first profile if no user param is passed
+        if (profiles.length > 0) {
+          setIs404NotFound(false);
+          setActiveProfileId(profiles[0].id);
+        } else {
+          setIs404NotFound(false);
+        }
       } else {
+        const trimmedName = urlUsername.trim();
         const found = profiles.find(
-          (p) => p.username.toLowerCase() === urlUsername.trim().toLowerCase()
+          (p) => p.username.toLowerCase() === trimmedName.toLowerCase()
         );
         if (found) {
           setIs404NotFound(false);
           setActiveProfileId(found.id);
         } else {
-          setIs404NotFound(true);
+          // Auto-create profile on the fly for URL user parameter
+          const newProfile: UserProfile = {
+            id: `profile_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            username: trimmedName,
+            birthdayDaysLeft: 100,
+            savingsDollars: 10,
+            bankName: 'Banco Principal',
+            accountNumber: '**** **** 1234',
+            bankNotes: `Perfil creado para ${trimmedName}`,
+            transactions: [
+              {
+                id: `tx_init_${Date.now()}`,
+                type: 'deposit',
+                amount: 10,
+                description: 'Saldo Inicial',
+                date: new Date().toLocaleDateString('es-ES')
+              }
+            ]
+          };
+          const updatedList = [...profiles, newProfile];
+          setProfiles(updatedList);
+          setActiveProfileId(newProfile.id);
+          setIs404NotFound(false);
+          try {
+            localStorage.setItem('app_user_profiles', JSON.stringify(updatedList));
+          } catch (err) {
+            console.error('Failed to save profile created from URL:', err);
+          }
+          syncProfileToSupabase(newProfile);
         }
       }
     } else {
@@ -234,8 +269,8 @@ export default function App() {
         setProfiles(fetchedProfiles);
         localStorage.setItem('app_user_profiles', JSON.stringify(fetchedProfiles));
       } else {
-        // Upsert default Carolina profile into Supabase
-        await syncProfileToSupabase(DEFAULT_CAROLINA_PROFILE);
+        // Upsert default profile into Supabase
+        await syncProfileToSupabase(DEFAULT_USER_PROFILE);
       }
     } catch (err) {
       console.warn('Supabase fetch user_profiles failed, using local state:', err);
@@ -252,7 +287,7 @@ export default function App() {
           action: item.action,
           payload: item.payload,
           timestamp: item.timestamp,
-          username: item.username || 'Carolina',
+          username: item.username || 'Usuario',
           metadata: item.metadata
         }));
         setLogs(fetchedLogs);
@@ -311,7 +346,7 @@ export default function App() {
     }
 
     const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
-    const usernameToUse = userForLink || activeProfile?.username || 'Carolina';
+    const usernameToUse = userForLink || activeProfile?.username || 'Usuario';
 
     // Update URL query parameters cleanly
     try {
@@ -339,7 +374,7 @@ export default function App() {
   const handleLogCapture = async (action: string, payload: any, metadata?: any) => {
     const activeConfig = getDailyGameByDay(selectedDay);
     const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
-    const username = activeProfile?.username || 'Carolina';
+    const username = activeProfile?.username || 'Usuario';
 
     const newLog: TelemetryLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -422,8 +457,18 @@ export default function App() {
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (profiles.length <= 1) return;
-    const updatedList = profiles.filter((p) => p.id !== profileId);
+    let updatedList = profiles.filter((p) => p.id !== profileId);
+
+    // If all profiles are deleted, reset to default profile
+    if (updatedList.length === 0) {
+      const defaultProf: UserProfile = {
+        ...DEFAULT_USER_PROFILE,
+        id: `profile_${Date.now()}`
+      };
+      updatedList = [defaultProf];
+      await syncProfileToSupabase(defaultProf);
+    }
+
     setProfiles(updatedList);
     setActiveProfileId(updatedList[0].id);
     try {
@@ -580,17 +625,6 @@ export default function App() {
               </p>
             </div>
 
-            <div className="pt-4 border-t border-sky-100 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = window.location.pathname;
-                }}
-                className="cursor-pointer text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl transition-all shadow-xs"
-              >
-                Ir al Inicio / Panel de Administración
-              </button>
-            </div>
           </div>
         ) : mode === 'admin' && !isGuestLocked ? (
           <AdminDashboard
