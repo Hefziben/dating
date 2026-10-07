@@ -12,7 +12,7 @@ export default function HeaderStatsBanner({ stats, className = '', isCompact = f
   const daysLeft = stats?.birthdayDaysLeft ?? 100;
   const savings = stats?.savingsDollars ?? 10;
   const bankName = stats?.bankName || 'Banco Principal';
-  const username = stats?.username || 'Carolina';
+  const username = stats?.username || 'Usuario';
 
   return (
     <motion.div

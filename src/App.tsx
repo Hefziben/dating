@@ -18,9 +18,9 @@ import UserView from './components/UserView';
 import TelemetryDrawer from './components/TelemetryDrawer';
 import UIExampleModal from './components/UIExampleModal';
 
-const DEFAULT_CAROLINA_PROFILE: UserProfile = {
-  id: 'profile_carolina',
-  username: 'Carolina',
+const DEFAULT_USER_PROFILE: UserProfile = {
+  id: 'profile_default',
+  username: 'Usuario',
   birthdayDaysLeft: 100,
   savingsDollars: 10,
   bankName: 'Banco Principal',
@@ -31,7 +31,7 @@ const DEFAULT_CAROLINA_PROFILE: UserProfile = {
       id: 'tx_init',
       type: 'deposit',
       amount: 10,
-      description: 'Saldo Inicial Migrado',
+      description: 'Saldo Inicial',
       date: '01/01/2025'
     }
   ]
@@ -57,13 +57,13 @@ export default function App() {
           return parsed;
         }
       }
-      // Migrate legacy single user_stats to Carolina profile if exists
+      // Migrate legacy single user_stats to default profile if exists
       const legacyStats = localStorage.getItem('user_stats');
       if (legacyStats) {
         const parsedStats = JSON.parse(legacyStats);
         return [
           {
-            ...DEFAULT_CAROLINA_PROFILE,
+            ...DEFAULT_USER_PROFILE,
             birthdayDaysLeft: parsedStats.birthdayDaysLeft ?? 100,
             savingsDollars: Number(parsedStats.savingsDollars ?? 10),
             birthdayDate: parsedStats.birthdayDate || undefined
@@ -73,10 +73,10 @@ export default function App() {
     } catch (err) {
       console.error('Failed to parse user profiles:', err);
     }
-    return [DEFAULT_CAROLINA_PROFILE];
+    return [DEFAULT_USER_PROFILE];
   });
 
-  const [activeProfileId, setActiveProfileId] = useState<string>(() => profiles[0]?.id || 'profile_carolina');
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => profiles[0]?.id || 'profile_default');
   const [urlUsername, setUrlUsername] = useState<string | null>(null);
   const [is404NotFound, setIs404NotFound] = useState(false);
 
@@ -171,7 +171,7 @@ export default function App() {
             action: newData.action,
             payload: newData.payload,
             timestamp: newData.timestamp,
-            username: newData.username || 'Carolina',
+            username: newData.username || 'Usuario',
             metadata: newData.metadata
           };
           setLogs((prev) => {
@@ -269,8 +269,8 @@ export default function App() {
         setProfiles(fetchedProfiles);
         localStorage.setItem('app_user_profiles', JSON.stringify(fetchedProfiles));
       } else {
-        // Upsert default Carolina profile into Supabase
-        await syncProfileToSupabase(DEFAULT_CAROLINA_PROFILE);
+        // Upsert default profile into Supabase
+        await syncProfileToSupabase(DEFAULT_USER_PROFILE);
       }
     } catch (err) {
       console.warn('Supabase fetch user_profiles failed, using local state:', err);
@@ -287,7 +287,7 @@ export default function App() {
           action: item.action,
           payload: item.payload,
           timestamp: item.timestamp,
-          username: item.username || 'Carolina',
+          username: item.username || 'Usuario',
           metadata: item.metadata
         }));
         setLogs(fetchedLogs);
@@ -346,7 +346,7 @@ export default function App() {
     }
 
     const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
-    const usernameToUse = userForLink || activeProfile?.username || 'Carolina';
+    const usernameToUse = userForLink || activeProfile?.username || 'Usuario';
 
     // Update URL query parameters cleanly
     try {
@@ -374,7 +374,7 @@ export default function App() {
   const handleLogCapture = async (action: string, payload: any, metadata?: any) => {
     const activeConfig = getDailyGameByDay(selectedDay);
     const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
-    const username = activeProfile?.username || 'Carolina';
+    const username = activeProfile?.username || 'Usuario';
 
     const newLog: TelemetryLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -462,7 +462,7 @@ export default function App() {
     // If all profiles are deleted, reset to default profile
     if (updatedList.length === 0) {
       const defaultProf: UserProfile = {
-        ...DEFAULT_CAROLINA_PROFILE,
+        ...DEFAULT_USER_PROFILE,
         id: `profile_${Date.now()}`
       };
       updatedList = [defaultProf];

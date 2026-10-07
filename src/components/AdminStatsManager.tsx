@@ -41,7 +41,7 @@ export default function AdminStatsManager({
 }: AdminStatsManagerProps) {
   const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
 
-  const [username, setUsername] = useState<string>(activeProfile?.username || 'Carolina');
+  const [username, setUsername] = useState<string>(activeProfile?.username || 'Usuario');
   const [daysLeft, setDaysLeft] = useState<number>(activeProfile?.birthdayDaysLeft ?? 100);
   const [savings, setSavings] = useState<number>(activeProfile?.savingsDollars ?? 10);
   const [birthdayDate, setBirthdayDate] = useState<string>(activeProfile?.birthdayDate || '');
@@ -277,11 +277,6 @@ export default function AdminStatsManager({
                   placeholder="Nombre de usuario"
                   required
                 />
-                {username.toLowerCase() === 'carolina' && (
-                  <span className="text-[10px] font-mono bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-semibold">
-                    Perfil Principal Migrado
-                  </span>
-                )}
               </div>
 
               <button
