@@ -265,7 +265,7 @@ export default function AdminDashboard({
                 </span>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Cada enlace incluye los parámetros <strong>&user={activeProfile?.username}&guest=true</strong>. Cuando {activeProfile?.username} abra el enlace en su celular, entrará en modo usuario con su propio cumpleaños y saldo bancario. Si alguien entra sin usuario o con un usuario no existente, verá la pantalla 404 sin información personal.
+                Cada enlace incluye los parámetros <strong>&user={activeProfile?.username}&guest=true</strong>. Cuando {activeProfile?.username} abra el enlace en su celular, entrará en modo usuario con su propio cumpleaños y saldo bancario.
               </p>
             </div>
           </div>

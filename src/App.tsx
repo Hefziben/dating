@@ -198,16 +198,51 @@ export default function App() {
   useEffect(() => {
     if (mode === 'play' || isGuestLocked) {
       if (!urlUsername || !urlUsername.trim()) {
-        setIs404NotFound(true);
+        // Default to first profile if no user param is passed
+        if (profiles.length > 0) {
+          setIs404NotFound(false);
+          setActiveProfileId(profiles[0].id);
+        } else {
+          setIs404NotFound(false);
+        }
       } else {
+        const trimmedName = urlUsername.trim();
         const found = profiles.find(
-          (p) => p.username.toLowerCase() === urlUsername.trim().toLowerCase()
+          (p) => p.username.toLowerCase() === trimmedName.toLowerCase()
         );
         if (found) {
           setIs404NotFound(false);
           setActiveProfileId(found.id);
         } else {
-          setIs404NotFound(true);
+          // Auto-create profile on the fly for URL user parameter
+          const newProfile: UserProfile = {
+            id: `profile_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            username: trimmedName,
+            birthdayDaysLeft: 100,
+            savingsDollars: 10,
+            bankName: 'Banco Principal',
+            accountNumber: '**** **** 1234',
+            bankNotes: `Perfil creado para ${trimmedName}`,
+            transactions: [
+              {
+                id: `tx_init_${Date.now()}`,
+                type: 'deposit',
+                amount: 10,
+                description: 'Saldo Inicial',
+                date: new Date().toLocaleDateString('es-ES')
+              }
+            ]
+          };
+          const updatedList = [...profiles, newProfile];
+          setProfiles(updatedList);
+          setActiveProfileId(newProfile.id);
+          setIs404NotFound(false);
+          try {
+            localStorage.setItem('app_user_profiles', JSON.stringify(updatedList));
+          } catch (err) {
+            console.error('Failed to save profile created from URL:', err);
+          }
+          syncProfileToSupabase(newProfile);
         }
       }
     } else {
@@ -422,8 +457,18 @@ export default function App() {
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (profiles.length <= 1) return;
-    const updatedList = profiles.filter((p) => p.id !== profileId);
+    let updatedList = profiles.filter((p) => p.id !== profileId);
+
+    // If all profiles are deleted, reset to default profile
+    if (updatedList.length === 0) {
+      const defaultProf: UserProfile = {
+        ...DEFAULT_CAROLINA_PROFILE,
+        id: `profile_${Date.now()}`
+      };
+      updatedList = [defaultProf];
+      await syncProfileToSupabase(defaultProf);
+    }
+
     setProfiles(updatedList);
     setActiveProfileId(updatedList[0].id);
     try {
@@ -580,17 +625,6 @@ export default function App() {
               </p>
             </div>
 
-            <div className="pt-4 border-t border-sky-100 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = window.location.pathname;
-                }}
-                className="cursor-pointer text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl transition-all shadow-xs"
-              >
-                Ir al Inicio / Panel de Administración
-              </button>
-            </div>
           </div>
         ) : mode === 'admin' && !isGuestLocked ? (
           <AdminDashboard
